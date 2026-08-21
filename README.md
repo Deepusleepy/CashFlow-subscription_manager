@@ -6,9 +6,7 @@ CashFlow is a polished, local-first fintech prototype that makes dense transacti
 Run locally
 This project needs Node.js 18.18+ (Node 20+ recommended).
 
-pnpm install
-pnpm dev
-Then open http://localhost:3000. For a production check, run pnpm build and pnpm start.
+Then open https://cashflow-psi-gray.vercel.app/. For a production check, run pnpm build and pnpm start.
 
 Supabase live mode
 The app is connected to the configured Supabase project through the browser-safe anon key in .env.local. To enable secure live data:
