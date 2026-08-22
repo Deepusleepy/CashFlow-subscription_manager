@@ -50,3 +50,5 @@ Moving to production
 Replace the lightweight fingerprint in lib/intelligence.ts with transaction-description embeddings (for example, OpenAI embeddings) stored in a vector index. Use cosine similarity over those vectors alongside merchant enrichment and account context. Ingest through a consented aggregator such as Plaid or region-appropriate Open Banking rails, or parse uploaded statements into the same Transaction schema. The existing cadence, anomaly, risk, and explanation layers can then operate on real transactions while retaining audit-friendly feature contributions.
 
 Never infer a cancellation from a model score alone: require an explicit user action and maintain a review trail.
+
+![image alt](page4.png)
