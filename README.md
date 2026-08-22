@@ -19,6 +19,7 @@ Start CashFlow and click Connect data to create or sign in to a Supabase Auth ac
 Import transaction rows into public.transactions with that user’s Auth UUID in user_id.
 CashFlow listens for inserts, updates, and deletes on public.transactions and refreshes the dashboard automatically. If there is no signed-in user or no live rows yet, it safely shows the synthetic demo dataset instead. The public anon key is protected by the RLS policies; never place a service_role key in the browser or a NEXT_PUBLIC_* variable.
 
+![image alt](page3.png)
 Demo flow (about two minutes)
 Start on Overview and click Run AI Scan to show the three-stage intelligence pass.
 Point out the monthly KPI cards, trend, spending distribution, and the two tailored AI insights.
@@ -36,6 +37,7 @@ lib/types.ts         Shared domain model
 How the AI logic works
 The demo intentionally avoids API keys. lib/intelligence.ts provides a transparent, deterministic stand-in for semantic matching:
 
+![image alt](page6.png)
 Merchant descriptions are normalized and tokenized, removing common bank-statement noise.
 An explainable bag-of-token fingerprint and cosine-style similarity unite aliases such as SPOTIFY P and Spotify AB.
 Cadence and amount variance then score recurrence even when bill dates drift slightly.
