@@ -8,6 +8,8 @@ This project needs Node.js 18.18+ (Node 20+ recommended).
 
 Then open https://cashflow-psi-gray.vercel.app/. For a production check, run pnpm build and pnpm start.
 
+![image alt](page2.png)
+
 Supabase live mode
 The app is connected to the configured Supabase project through the browser-safe anon key in .env.local. To enable secure live data:
 
