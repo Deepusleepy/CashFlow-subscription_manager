@@ -38,6 +38,7 @@ How the AI logic works
 The demo intentionally avoids API keys. lib/intelligence.ts provides a transparent, deterministic stand-in for semantic matching:
 
 ![image alt](page6.png)
+
 Merchant descriptions are normalized and tokenized, removing common bank-statement noise.
 An explainable bag-of-token fingerprint and cosine-style similarity unite aliases such as SPOTIFY P and Spotify AB.
 Cadence and amount variance then score recurrence even when bill dates drift slightly.
