@@ -31,7 +31,7 @@ export function detectSubscriptions(source = transactions): Subscription[] {
   return [...groups].map(([canonical, members]) => {
     const sorted = [...members].sort((a,b) => a.date.localeCompare(b.date));
     const intervals = sorted.slice(1).map((t, i) => days(sorted[i].date, t.date));
-    const medianInterval = intervals.sort((a,b)=>a-b)[Math.floor(intervals.length / 2)] ?? 30;
+    const medianInterval = intervals.sort((a,b)=>a-b)[Math.floor(intervals.length / 2)] ?? 365;
     const frequency: Subscription["frequency"] = medianInterval > 300 ? "yearly" : medianInterval > 80 ? "quarterly" : medianInterval < 12 ? "weekly" : "monthly";
     const averageAmount = Math.round(members.reduce((s,t)=>s+t.amount,0) / members.length);
     const variance = Math.max(...members.map(t => Math.abs(t.amount - averageAmount))) / averageAmount;
