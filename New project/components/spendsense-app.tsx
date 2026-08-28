@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Bell, BrainCircuit, CalendarDays, Check, ChevronRight, CircleHelp, CreditCard, DollarSign, Menu, Plus, ScanLine, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
@@ -15,6 +15,39 @@ type Scenario = "Young professional" | "Shared apartment" | "Power subscriber";
 const scenarios: Scenario[] = ["Young professional", "Shared apartment", "Power subscriber"];
 
 function Tone({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "risk" | "good" | "learning" }) { return <span className={`tone ${tone}`}>{children}</span>; }
+
+type ErrorBoundaryProps = { children: React.ReactNode };
+type ErrorBoundaryState = { hasError: boolean };
+
+// Top-level safety net so a render-time crash shows a friendly message
+// with a refresh button instead of a blank white screen.
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): ErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("CashFlowApp crashed", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <main className="app-shell" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ textAlign: "center", maxWidth: 360 }}>
+          <h1>Something went wrong</h1>
+          <p>We hit an unexpected error loading your dashboard.</p>
+          <button onClick={() => window.location.reload()} style={{ marginTop: 16 }}>Refresh</button>
+        </div>
+      </main>;
+    }
+    return this.props.children;
+  }
+}
 
 export function CashFlowApp() {
   const [view, setView] = useState<View>("dashboard");
@@ -32,8 +65,8 @@ export function CashFlowApp() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeMonth, setActiveMonth] = useState<string | null>(null);
   const [showAllRecent, setShowAllRecent] = useState(false);
-  const subscriptions = useMemo(() => detectSubscriptions(liveTransactions), [liveTransactions]);
-  const anomalies = useMemo(() => detectAnomalies(liveTransactions, subscriptions), [liveTransactions, subscriptions]);
+  const subscriptions = useMemo(() => { try { return detectSubscriptions(liveTransactions); } catch { return []; } }, [liveTransactions]);
+  const anomalies = useMemo(() => { try { return detectAnomalies(liveTransactions, subscriptions); } catch { return []; } }, [liveTransactions, subscriptions]);
   const visibleSubscriptions = subscriptions.filter(s => !dismissed.includes(s.id));
   const alerts = visibleSubscriptions.filter(s => silentRisk(s) >= 50);
   const latestMonth = liveTransactions.reduce((latest, transaction) => transaction.date.slice(0, 7) > latest ? transaction.date.slice(0, 7) : latest, "");
@@ -61,17 +94,23 @@ export function CashFlowApp() {
     if (!client) return;
     let mounted = true;
     const refresh = async () => {
-      const { data: sessionData } = await client.auth.getSession();
-      const session = sessionData.session;
-      if (!mounted) return;
-      setSessionEmail(session?.user.email ?? null);
-      if (!session) { setDataSource("demo"); setLiveTransactions(transactions); return; }
-      const { data, error } = await client.from("transactions").select("id,date,merchant,amount,category,kind,engagement_days").order("date", { ascending: true });
-      if (!mounted) return;
-      if (error) { setDataSource("demo"); return; }
-      const rows: Transaction[] = (data ?? []).map(row => ({ id: row.id, date: row.date, merchant: row.merchant, amount: Number(row.amount), category: row.category as Transaction["category"], kind: row.kind as Transaction["kind"], engagementDays: row.engagement_days ?? undefined }));
-      setLiveTransactions(rows.length ? rows : transactions);
-      setDataSource(rows.length ? "live" : "connected-empty");
+      try {
+        const { data: sessionData } = await client.auth.getSession();
+        const session = sessionData.session;
+        if (!mounted) return;
+        setSessionEmail(session?.user.email ?? null);
+        if (!session) { setDataSource("demo"); setLiveTransactions(transactions); return; }
+        const { data, error } = await client.from("transactions").select("id,date,merchant,amount,category,kind,engagement_days").order("date", { ascending: true });
+        if (!mounted) return;
+        if (error) { setDataSource("demo"); setLiveTransactions(transactions); return; }
+        const rows: Transaction[] = (data ?? []).map(row => ({ id: row.id, date: row.date, merchant: row.merchant, amount: Number(row.amount), category: row.category as Transaction["category"], kind: row.kind as Transaction["kind"], engagementDays: row.engagement_days ?? undefined }));
+        setLiveTransactions(rows.length ? rows : transactions);
+        setDataSource(rows.length ? "live" : "connected-empty");
+      } catch {
+        if (!mounted) return;
+        setDataSource("demo");
+        setLiveTransactions(transactions);
+      }
     };
     refresh();
     const authListener = client.auth.onAuthStateChange(() => { window.setTimeout(refresh, 0); });
@@ -92,13 +131,17 @@ export function CashFlowApp() {
     const client = supabase;
     const localTransaction: Transaction = { id: `manual-${Date.now()}`, date: entry.date, merchant: entry.merchant, amount: entry.amount, category: entry.category, kind: "debit", engagementDays: 0 };
     if (!client) { setLiveTransactions(previous => [...previous, localTransaction].sort((a, b) => a.date.localeCompare(b.date))); return; }
-    const { data: sessionData } = await client.auth.getSession();
-    if (!sessionData.session) { setLiveTransactions(previous => [...previous, localTransaction].sort((a, b) => a.date.localeCompare(b.date))); return; }
-    const { data, error } = await client.from("transactions").insert({ user_id: sessionData.session.user.id, date: entry.date, merchant: entry.merchant, amount: entry.amount, category: entry.category, kind: "debit", engagement_days: 0 }).select("id,date,merchant,amount,category,kind,engagement_days").single();
-    if (error) throw new Error(error.message);
-    const saved: Transaction = { id: data.id, date: data.date, merchant: data.merchant, amount: Number(data.amount), category: data.category as Transaction["category"], kind: data.kind as Transaction["kind"], engagementDays: data.engagement_days ?? undefined };
-    setLiveTransactions(previous => [...previous, saved].sort((a, b) => a.date.localeCompare(b.date)));
-    setDataSource("live");
+    try {
+      const { data: sessionData } = await client.auth.getSession();
+      if (!sessionData.session) { setLiveTransactions(previous => [...previous, localTransaction].sort((a, b) => a.date.localeCompare(b.date))); return; }
+      const { data, error } = await client.from("transactions").insert({ user_id: sessionData.session.user.id, date: entry.date, merchant: entry.merchant, amount: entry.amount, category: entry.category, kind: "debit", engagement_days: 0 }).select("id,date,merchant,amount,category,kind,engagement_days").single();
+      if (error) throw new Error(error.message);
+      const saved: Transaction = { id: data.id, date: data.date, merchant: data.merchant, amount: Number(data.amount), category: data.category as Transaction["category"], kind: data.kind as Transaction["kind"], engagementDays: data.engagement_days ?? undefined };
+      setLiveTransactions(previous => [...previous, saved].sort((a, b) => a.date.localeCompare(b.date)));
+      setDataSource("live");
+    } catch {
+      setLiveTransactions(previous => [...previous, localTransaction].sort((a, b) => a.date.localeCompare(b.date)));
+    }
   };
 
   const logout = async () => {
