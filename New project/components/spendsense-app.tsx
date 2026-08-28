@@ -142,6 +142,11 @@ export function CashFlowApp() {
     </section>
     {selected && <ExplainDrawer item={selected} classification={"id" in selected ? classifications[selected.id] : undefined} onClose={() => setSelected(null)} onKeep={keep} setClassification={(value) => "id" in selected && setClassifications(c => ({...c, [selected.id]: value}))}/>}
     {entryOpen && <AddSubscriptionModal onClose={() => setEntryOpen(false)} onSave={addSubscription}/>}
+    <nav className="bottom-nav" aria-label="Quick navigation">
+      <button className={view === "dashboard" ? "bn-item active" : "bn-item"} onClick={() => navigate("dashboard")}><Zap size={20}/><span>Overview</span></button>
+      <button className={view === "subscriptions" ? "bn-item active" : "bn-item"} onClick={() => navigate("subscriptions")}><CreditCard size={20}/><span>Subscriptions</span></button>
+      <button className="bn-item" disabled={anomalies.length === 0} onClick={() => { if (anomalies[0]) setSelected(anomalies[0]); }}><AlertTriangle size={20}/><span>Anomalies</span>{anomalies.length > 0 && <em aria-hidden="true">{anomalies.length}</em>}</button>
+    </nav>
   </main>;
 }
 
