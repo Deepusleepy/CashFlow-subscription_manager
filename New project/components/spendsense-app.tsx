@@ -23,7 +23,7 @@ export function CashFlowApp() {
   const [scanStage, setScanStage] = useState(3);
   const [chartsReady, setChartsReady] = useState(false);
   const [liveTransactions, setLiveTransactions] = useState<Transaction[]>(transactions);
-  const [dataSource, setDataSource] = useState<"demo" | "live" | "connected-empty">("demo");
+  const [dataSource, setDataSource] = useState<"demo" | "live" | "connected-empty" | "loading">("demo");
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [entryOpen, setEntryOpen] = useState(false);
   const [selected, setSelected] = useState<Subscription | Anomaly | null>(null);
@@ -66,6 +66,7 @@ export function CashFlowApp() {
       if (!mounted) return;
       setSessionEmail(session?.user.email ?? null);
       if (!session) { setDataSource("demo"); setLiveTransactions(transactions); return; }
+      if (session) { if (mounted) setDataSource("loading"); }
       const { data, error } = await client.from("transactions").select("id,date,merchant,amount,category,kind,engagement_days").order("date", { ascending: true });
       if (!mounted) return;
       if (error) { setDataSource("demo"); return; }
@@ -137,6 +138,7 @@ export function CashFlowApp() {
         <div><p className="eyebrow">YOUR MONEY, MADE CLEARER</p><h1>{view === "dashboard" ? "Good afternoon, Marmik" : "Subscription intelligence"}</h1></div>
         <div className="header-actions"><label className="month-select"><CalendarDays size={16}/><select value={selectedMonthKey} aria-label="Select month" onChange={event => setActiveMonth(event.target.value)}>{availableMonths.slice().reverse().map(month => <option key={month} value={month}>{new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(new Date(`${month}-01T00:00:00`))}</option>)}</select></label><button onClick={runScan} disabled={scanning} className="scan-btn"><ScanLine size={17}/>{scanning ? "Scanning…" : "Run AI Scan"}</button></div>
       </header>
+      {dataSource === "loading" && <div className="loading-bar" aria-label="Loading your data" role="status"><span className="loading-bar-inner"/></div>}
       <div className="scenario-row"><div className="scenario-toggle"><span className="scenario-label">Demo scenario</span><div className="scenario-segmented">{scenarios.map(option => <button key={option} onClick={() => setScenario(option)} className={scenario === option ? "scenario selected" : "scenario"}>{option}</button>)}</div></div><span className="scenario-copy">{scenario === "Shared apartment" ? "Rent split is protected as a new shared commitment." : scenario === "Power subscriber" ? "More overlap signals surfaced for a subscription-heavy life." : "Balanced spending patterns with realistic drift."}</span></div>
       {scanning ? <ScanProgress stage={scanStage}/> : view === "dashboard" ? <Dashboard dataset={liveTransactions} currentMonthLabel={currentMonthLabel} selectedMonthKey={selectedMonthKey} subscriptions={visibleSubscriptions} anomalies={anomalies} monthlySpend={monthlySpend} potentialSavings={potentialSavings} learningCount={learningCount} alertsCount={alerts.length} chartsReady={chartsReady} showAllRecent={showAllRecent} onToggleShowAll={() => setShowAllRecent(v => !v)} onSelect={setSelected} onNavigate={() => setView("subscriptions")}/> : <Subscriptions subscriptions={visibleSubscriptions} onSelect={setSelected} onKeep={keep} classifications={classifications} setClassifications={setClassifications} onAdd={() => setEntryOpen(true)}/>}
     </section>
