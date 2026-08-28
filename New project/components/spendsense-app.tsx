@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Bell, BrainCircuit, CalendarDays, Check, ChevronRight, CircleHelp, CreditCard, DollarSign, Menu, Plus, ScanLine, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
@@ -109,6 +109,7 @@ export function CashFlowApp() {
   };
 
   return <main className="app-shell">
+    <a href="#main-content" className="skip-link">Skip to main content</a>
     <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
       <button className="sidebar-close" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><X size={20}/></button>
       <div className="brand"><span className="brand-mark"><Sparkles size={18}/></span><span>Cash<span>Flow</span></span></div>
@@ -131,7 +132,7 @@ export function CashFlowApp() {
       </div>
     </aside>
     {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
-    <section className="content">
+    <section className="content" id="main-content">
       <header className="topbar">
         <button className="menu-btn" aria-label="Open navigation" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen(o => !o)}><Menu size={20}/></button>
         <div><p className="eyebrow">YOUR MONEY, MADE CLEARER</p><h1>{view === "dashboard" ? "Good afternoon, Marmik" : "Subscription intelligence"}</h1></div>
@@ -190,7 +191,24 @@ function ExplainDrawer({ item, classification, onClose, onKeep, setClassificatio
   const subscription = "members" in item; const s = subscription ? item as Subscription : null; const a = subscription ? null : item as Anomaly;
   const title = s?.canonical ?? a!.transaction.merchant;
   const similarityScore = s ? Math.round(s.members.slice(1).reduce((sum,t)=>sum + (t.merchant.toLowerCase().includes(s.canonical.toLowerCase().split(" ")[0].toLowerCase()) ? 93 : 71),0) / Math.max(1,s.members.length-1)) : 0;
-  return <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" onMouseDown={e=>e.stopPropagation()}><button className="close-btn" onClick={onClose} aria-label="Close details"><X size={20}/></button><p className="eyebrow">WHY WAS THIS FLAGGED?</p><h2 id="drawer-title">{title}</h2>{s ? <><div className="drawer-summary"><span className="merchant-icon big">{title[0]}</span><div><strong>{currency(s.averageAmount)} / {s.frequency}</strong><p>{s.status === "learning" ? "New recurring commitment — learning" : `${s.confidence}% recurring confidence`}</p></div></div><p className="drawer-copy">{s.status === "possibly unused" ? `You have paid ${currency(s.averageAmount)}/month to ${s.canonical} for ${s.members.length} months. No usage was recorded in the last 60 days. Reviewing it could save ${currency(s.annualized)}/year.` : s.status === "duplicate" ? `${s.canonical} overlaps with your Netflix entertainment coverage. There’s a strong chance you only need one paid streaming plan.` : s.description}</p><div className="evidence"><Evidence label="Similar merchant examples" value={s.members.slice(0,3).map(t=>t.merchant).join(" · ")}/><Evidence label="Merchant-name similarity" value={`${similarityScore}% semantic match`}/><Evidence label="Date intervals" value={s.members.slice(1,4).map((t,i)=>`${Math.round((new Date(`${t.date}T00:00:00`).getTime()-new Date(`${s.members[i].date}T00:00:00`).getTime())/86400000)} days`).join(" · ") || "Learning from timing"}/><Evidence label="Amount variance" value={`${currency(Math.min(...s.members.map(t=>t.amount)))} – ${currency(Math.max(...s.members.map(t=>t.amount)))}`}/><Evidence label="Recurrence confidence" value={`${s.confidence}% · ${s.frequency} cadence`}/></div>{s.status === "learning" ? <div className="drawer-classify"><strong>Classify this commitment</strong>{["Essential", "Shared expense", "Subscription", "Review later"].map(v=><button className={classification === v ? "selected" : ""} onClick={()=>setClassification(v)} key={v}>{classification === v && <Check size={14}/>} {v}</button>)}</div> : <div className="drawer-actions"><button className="secondary-btn" onClick={()=>onKeep(s.id)}>Keep it</button><button className="primary-btn" onClick={onClose}>{s.status === "active" ? "Looks right" : "Cancel / review"}</button></div>}</> : <><div className="drawer-summary"><span className="merchant-icon danger big"><AlertTriangle size={20}/></span><div><strong>{currency(a!.transaction.amount)}</strong><p>{a!.score}/100 anomaly score</p></div></div><p className="drawer-copy">This looks unusual, but we don’t assume it’s a mistake. It was kept separate from your recurring charges because no recurring pattern was found.</p><div className="evidence"><Evidence label="Category baseline" value={`${currency(a!.categoryMedian)} typical ${a!.transaction.category.toLowerCase()} transaction`}/><Evidence label="Amount deviation" value={a!.reasons[0]}/><Evidence label="Merchant novelty" value={a!.merchantNovelty ? "First time seen in your history" : "Known merchant"}/><Evidence label="Recurring cluster" value="No high-confidence match"/></div><div className="drawer-actions"><button className="secondary-btn" onClick={onClose}>Mark as expected</button><button className="primary-btn" onClick={onClose}>Review transaction</button></div></>}</aside></div>;
+  const drawerRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+    const focusable = drawer.querySelectorAll('button, a, select, input, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length === 0) return;
+    const first = focusable[0] as HTMLElement;
+    const last = focusable[focusable.length - 1] as HTMLElement;
+    first.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    drawer.addEventListener('keydown', trap);
+    return () => drawer.removeEventListener('keydown', trap);
+  }, []);
+  return <div className="drawer-backdrop" role="presentation" onMouseDown={onClose}><aside className="drawer" ref={drawerRef} role="dialog" aria-modal="true" aria-labelledby="drawer-title" onMouseDown={e=>e.stopPropagation()}><button className="close-btn" onClick={onClose} aria-label="Close details"><X size={20}/></button><p className="eyebrow">WHY WAS THIS FLAGGED?</p><h2 id="drawer-title">{title}</h2>{s ? <><div className="drawer-summary"><span className="merchant-icon big">{title[0]}</span><div><strong>{currency(s.averageAmount)} / {s.frequency}</strong><p>{s.status === "learning" ? "New recurring commitment — learning" : `${s.confidence}% recurring confidence`}</p></div></div><p className="drawer-copy">{s.status === "possibly unused" ? `You have paid ${currency(s.averageAmount)}/month to ${s.canonical} for ${s.members.length} months. No usage was recorded in the last 60 days. Reviewing it could save ${currency(s.annualized)}/year.` : s.status === "duplicate" ? `${s.canonical} overlaps with your Netflix entertainment coverage. There’s a strong chance you only need one paid streaming plan.` : s.description}</p><div className="evidence"><Evidence label="Similar merchant examples" value={s.members.slice(0,3).map(t=>t.merchant).join(" · ")}/><Evidence label="Merchant-name similarity" value={`${similarityScore}% semantic match`}/><Evidence label="Date intervals" value={s.members.slice(1,4).map((t,i)=>`${Math.round((new Date(`${t.date}T00:00:00`).getTime()-new Date(`${s.members[i].date}T00:00:00`).getTime())/86400000)} days`).join(" · ") || "Learning from timing"}/><Evidence label="Amount variance" value={`${currency(Math.min(...s.members.map(t=>t.amount)))} – ${currency(Math.max(...s.members.map(t=>t.amount)))}`}/><Evidence label="Recurrence confidence" value={`${s.confidence}% · ${s.frequency} cadence`}/></div>{s.status === "learning" ? <div className="drawer-classify"><strong>Classify this commitment</strong>{["Essential", "Shared expense", "Subscription", "Review later"].map(v=><button className={classification === v ? "selected" : ""} onClick={()=>setClassification(v)} key={v}>{classification === v && <Check size={14}/>} {v}</button>)}</div> : <div className="drawer-actions"><button className="secondary-btn" onClick={()=>onKeep(s.id)}>Keep it</button><button className="primary-btn" onClick={onClose}>{s.status === "active" ? "Looks right" : "Cancel / review"}</button></div>}</> : <><div className="drawer-summary"><span className="merchant-icon danger big"><AlertTriangle size={20}/></span><div><strong>{currency(a!.transaction.amount)}</strong><p>{a!.score}/100 anomaly score</p></div></div><p className="drawer-copy">This looks unusual, but we don’t assume it’s a mistake. It was kept separate from your recurring charges because no recurring pattern was found.</p><div className="evidence"><Evidence label="Category baseline" value={`${currency(a!.categoryMedian)} typical ${a!.transaction.category.toLowerCase()} transaction`}/><Evidence label="Amount deviation" value={a!.reasons[0]}/><Evidence label="Merchant novelty" value={a!.merchantNovelty ? "First time seen in your history" : "Known merchant"}/><Evidence label="Recurring cluster" value="No high-confidence match"/></div><div className="drawer-actions"><button className="secondary-btn" onClick={onClose}>Mark as expected</button><button className="primary-btn" onClick={onClose}>Review transaction</button></div></>}</aside></div>;
 }
 
 function Evidence({ label, value }: {label:string;value:string}) { return <div><span>{label}</span><strong>{value}</strong></div>; }

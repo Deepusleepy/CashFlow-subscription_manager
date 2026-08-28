@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;padding:8px 16px;background:var(--teal);color:#fff;border-radius:0 0 8px 0;font-size:12px;font-weight:700}.skip-link:focus{left:0}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
