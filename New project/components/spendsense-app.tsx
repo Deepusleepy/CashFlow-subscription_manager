@@ -101,6 +101,13 @@ export function CashFlowApp() {
     setDataSource("live");
   };
 
+  const logout = async () => {
+    if (supabase) await supabase.auth.signOut();
+    setSessionEmail(null);
+    setDataSource("demo");
+    setLiveTransactions(transactions);
+  };
+
   return <main className="app-shell">
     <aside className={`sidebar${sidebarOpen ? " open" : ""}`}>
       <button className="sidebar-close" aria-label="Close navigation" onClick={() => setSidebarOpen(false)}><X size={20}/></button>
@@ -113,10 +120,14 @@ export function CashFlowApp() {
       <div className="privacy-card"><ShieldCheck size={18}/><div><strong>Private by design</strong><p>Your demo data stays local.</p></div></div>
       <div className="sidebar-footer">
         <div className="sidebar-status-row">
-          <Link href="/login" className={`data-status ${dataSource === "live" ? "live" : ""}`}><span className="status-dot"/>{dataSource === "live" ? "Live data" : sessionEmail ? "Connected" : "Login"}</Link>
+          {sessionEmail || dataSource === "live" ? (
+            <button className="data-status" onClick={logout}><span className="status-dot"/>Logout</button>
+          ) : (
+            <Link href="/login" className="data-status"><span className="status-dot"/>Login</Link>
+          )}
           <button className="icon-btn" aria-label={`Notifications, ${alerts.length} unread`} title={`${alerts.length} subscription${alerts.length === 1 ? "" : "s"} to review`} onClick={() => { if (alerts[0]) setSelected(alerts[0]); else navigate("subscriptions"); setSidebarOpen(false); }}><Bell size={18}/>{alerts.length > 0 && <i/>}</button>
         </div>
-        <div className="persona"><span className="avatar">MS</span><div><strong>Marmik S.</strong><small>Young professional</small></div></div>
+        <div className="persona"><span className="avatar">MS</span><div><strong>{sessionEmail || "Marmik S."}</strong><small>{dataSource === "live" ? "Live data connected" : "Young professional"}</small></div></div>
       </div>
     </aside>
     {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
