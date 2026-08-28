@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Area, AreaChart, Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Bell, BrainCircuit, CalendarDays, Check, ChevronRight, CircleHelp, CreditCard, DollarSign, Menu, Plus, ScanLine, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
+import { Area, AreaChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Bell, BrainCircuit, CalendarDays, Check, ChevronRight, CreditCard, DollarSign, Menu, Plus, ScanLine, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 import { transactions } from "../lib/data";
 import { categoryColors, currency, dateLabel, detectAnomalies, detectSubscriptions, silentRisk, statusLabel } from "../lib/intelligence";
 import { Anomaly, Subscription, Transaction } from "../lib/types";
@@ -20,7 +20,7 @@ export function CashFlowApp() {
   const [view, setView] = useState<View>("dashboard");
   const [scenario, setScenario] = useState<Scenario>("Young professional");
   const [scanning, setScanning] = useState(false);
-  const [scanStage, setScanStage] = useState(3);
+  const [scanStage, setScanStage] = useState(0);
   const [chartsReady, setChartsReady] = useState(false);
   const [liveTransactions, setLiveTransactions] = useState<Transaction[]>(transactions);
   const [dataSource, setDataSource] = useState<"demo" | "live" | "connected-empty">("demo");
@@ -34,16 +34,16 @@ export function CashFlowApp() {
   const [showAllRecent, setShowAllRecent] = useState(false);
   const subscriptions = useMemo(() => detectSubscriptions(liveTransactions), [liveTransactions]);
   const anomalies = useMemo(() => detectAnomalies(liveTransactions, subscriptions), [liveTransactions, subscriptions]);
-  const visibleSubscriptions = subscriptions.filter(s => !dismissed.includes(s.id));
-  const alerts = visibleSubscriptions.filter(s => silentRisk(s) >= 50);
-  const latestMonth = liveTransactions.reduce((latest, transaction) => transaction.date.slice(0, 7) > latest ? transaction.date.slice(0, 7) : latest, "");
-  const availableMonths = [...new Set(liveTransactions.filter(t => t.kind === "debit").map(t => t.date.slice(0, 7)))].sort();
+  const visibleSubscriptions = useMemo(() => subscriptions.filter(s => !dismissed.includes(s.id)), [subscriptions, dismissed]);
+  const alerts = useMemo(() => visibleSubscriptions.filter(s => silentRisk(s) >= 50), [visibleSubscriptions]);
+  const latestMonth = useMemo(() => liveTransactions.reduce((latest, transaction) => transaction.date.slice(0, 7) > latest ? transaction.date.slice(0, 7) : latest, ""), [liveTransactions]);
+  const availableMonths = useMemo(() => [...new Set(liveTransactions.filter(t => t.kind === "debit").map(t => t.date.slice(0, 7)))].sort(), [liveTransactions]);
   const selectedMonthKey = activeMonth ?? latestMonth;
-  const currentMonth = liveTransactions.filter(t => t.date.startsWith(selectedMonthKey) && t.kind === "debit");
+  const currentMonth = useMemo(() => liveTransactions.filter(t => t.date.startsWith(selectedMonthKey) && t.kind === "debit"), [liveTransactions, selectedMonthKey]);
   const currentMonthLabel = selectedMonthKey ? new Intl.DateTimeFormat("en-IN", { month: "long" }).format(new Date(`${selectedMonthKey}-01T00:00:00`)) : "Current month";
-  const monthlySpend = currentMonth.reduce((sum, t) => sum + t.amount, 0);
-  const learningCount = subscriptions.filter(s => s.status === "learning").length;
-  const potentialSavings = alerts.reduce((sum, s) => sum + (s.status === "duplicate" || s.status === "possibly unused" ? s.averageAmount : 0), 0);
+  const monthlySpend = useMemo(() => currentMonth.reduce((sum, t) => sum + t.amount, 0), [currentMonth]);
+  const learningCount = useMemo(() => subscriptions.filter(s => s.status === "learning").length, [subscriptions]);
+  const potentialSavings = useMemo(() => alerts.reduce((sum, s) => sum + (s.status === "duplicate" || s.status === "possibly unused" ? s.averageAmount : 0), 0), [alerts]);
   const navigate = (next: View) => { setView(next); setSidebarOpen(false); };
 
   useEffect(() => {
