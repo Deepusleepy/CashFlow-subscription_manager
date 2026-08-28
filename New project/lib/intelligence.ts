@@ -43,7 +43,7 @@ export function detectSubscriptions(source = transactions): Subscription[] {
     const duplicate = canonical === "YouTube Premium";
     const unused = canonical === "Netflix" || canonical === "YouTube Premium";
     const annualized = averageAmount * (frequency === "yearly" ? 1 : frequency === "quarterly" ? 4 : frequency === "weekly" ? 52 : 12);
-    const status: Subscription["status"] = isLearning ? "learning" : duplicate ? "duplicate" : increased ? "price increased" : unused ? "possibly unused" : "active";
+    const status: Subscription["status"] = isLearning ? "learning" : duplicate ? "duplicate" : unused ? "possibly unused" : increased ? "price increased" : "active";
     return { id: canonical.toLowerCase().replaceAll(" ", "-"), canonical, members: sorted, confidence: isLearning ? 76 : confidence, frequency, averageAmount, lastCharged: last.date, nextExpected: next.toISOString().slice(0,10), annualized, engagementDays: Math.round(members.reduce((s,t)=>s+(t.engagementDays ?? 0),0)/members.length), duplicateLikelihood: duplicate ? 84 : canonical === "Netflix" ? 42 : 8, priceIncrease: increased, status, description: isLearning ? "Three stable, on-time payments suggest a shared household commitment. We’re learning its role before judging it." : `${members.length} matching charges across merchant-name variations.` };
   }).sort((a,b)=>b.annualized-a.annualized);
 }
@@ -69,4 +69,5 @@ export function detectAnomalies(source = transactions, subscriptions = detectSub
 export const currency = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
 export const dateLabel = fmtDate;
 export const statusLabel = (status: string) => status.replace(/\b\w/g, c=>c.toUpperCase());
+export const isOverdue = (nextExpected: string) => new Date(`${nextExpected}T00:00:00`) < new Date();
 export const categoryColors: Record<Category, string> = { Income: "#49d6af", Housing: "#9676ff", Utilities: "#4fb5ff", Food: "#f5a66a", Shopping: "#ec77ba", Transport: "#66d1e7", Entertainment: "#7869ff", Transfer: "#ffcb65", Health: "#65d789", Other: "#a4b1c8" };
